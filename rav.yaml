@@ -1,20 +1,14 @@
 name: iScheduler
 
+
 scripts:
-    runserver: 
-        - cd iScheduler
-        - python3 manage.py runserver
-    makemigrations: 
-        - cd iScheduler
-        - python3 manage.py makemigrations
-    migrate: 
-        - cd iScheduler
-        - python3 manage.py migrate
-    runcelery:
-        - cd iScheduler
-        - celery -A iScheduler worker --loglevel=info
-    cleanup: 
-        - cd iScheduler
-        - python3 cleanup.py
+    runserver: python3 manage.py runserver
+    # makemigrations: 
+    #     - python3 manage.py makemigrations
+    # migrate: 
+    #     - python3 manage.py migrate
+    celery: celery -A iScheduler worker --loglevel=info
+    # cleanup: 
+    #     - python3 cleanup.py
 
         

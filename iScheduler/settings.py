@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
+
 from pathlib import Path
 from celery.schedules import crontab
 
@@ -135,16 +136,16 @@ AUTH_USER_MODEL = "core.User"
 # --- Celery Config ---
 # Celery Configuration Options
 CELERY_BROKER_URL = 'redis://localhost:6379/0'  # Ensure Redis is running locally
-# CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
-# CELERY_ACCEPT_CONTENT = ['json']
-# CELERY_TASK_SERIALIZER = 'json'
-# CELERY_RESULT_SERIALIZER = 'json'
-# CELERY_TIMEZONE = 'UTC'
+CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'UTC'
 
-# CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
+CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 
-# # Optional: To suppress the deprecation warning
-# CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+# Optional: To suppress the deprecation warning
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 
 # CELERY_BEAT_SCHEDULE = {
 #     'send-promotional-emails-every-monday-830am': {

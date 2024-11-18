@@ -10,7 +10,7 @@ def index(request):
 
 
 def with_celery(request):
-    w= waiting.delay(5)
+    w = waiting.delay()
     return JsonResponse({"With": "With celery"})
 
 
