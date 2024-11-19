@@ -1,6 +1,6 @@
 from django.http import JsonResponse
 from django.shortcuts import render
-
+import redis
 from core.tasks import waiting
 
 
@@ -10,6 +10,8 @@ def index(request):
 
 
 def with_celery(request):
+    r = redis.Redis(host='localhost', port=6379, db=0)
+    print(r.ping())
     w = waiting.delay()
     return JsonResponse({"With": "With celery"})
 
