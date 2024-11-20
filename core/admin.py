@@ -5,7 +5,7 @@ from core.models import Schedule, Task, User
 
 class CustomUserAdmin(UserAdmin):
     model = User
-    list_display = ("username", "email", "first_name", "last_name", "bio", "is_staff")
+    list_display = ("id", "username", "email", "first_name", "last_name", "bio", "is_staff")
     search_fields = ("username", "email")
 
 admin.site.register(User, CustomUserAdmin)
@@ -13,7 +13,7 @@ admin.site.register(User, CustomUserAdmin)
 
 @admin.register(Task)
 class TaskAdmin(admin.ModelAdmin):
-    list_display = ("name", "user", "priority", "status", "start_dt", "end_dt")
+    list_display = ("name", "user", "priority", "status", "start_dt",  "end_dt")
     list_filter = ("priority", "status")
     search_fields = ("name", "description")
 

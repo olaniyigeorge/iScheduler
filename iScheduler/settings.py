@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 
+import os
 from pathlib import Path
 from celery.schedules import crontab
 
@@ -41,6 +42,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     "core",
+
+    "rest_framework"
 ]
 
 MIDDLEWARE = [
@@ -135,8 +138,8 @@ AUTH_USER_MODEL = "core.User"
 
 # --- Celery Config ---
 # Celery Configuration Options
-CELERY_BROKER_URL = 'redis://localhost:6379/0'  # Ensure Redis is running locally
-CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+CELERY_BROKER_URL = os.environ.get("CELERY_BROKER", "redis://redis:6379/0")
+CELERY_RESULT_BACKEND = os.environ.get("CELERY_BROKER", "redis://redis:6379/0")
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
@@ -153,3 +156,5 @@ CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 #         'schedule': crontab(hour=8, minute=30, day_of_week=1),  # Monday is 1
 #     },
 # }
+
+

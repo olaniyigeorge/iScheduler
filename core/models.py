@@ -1,8 +1,7 @@
 from django.db import models
 from django.forms import ValidationError
-from django.utils.timezone import now
 from django.contrib.auth.models import AbstractUser
-
+from django.utils.timezone import now
 
 # User
 class User(AbstractUser):
@@ -38,6 +37,20 @@ class Task(models.Model):
     def __str__(self):
         return f"{self.name} ({self.status})"
     
+    # def is_available(self):
+    #     today = datetime.now()
+    #     is_available = self.priority == "pending" and self.start_dt >= today and self.end_dt <= today
+    #     print("is avaliable", is_available)
+    #     return is_available
+    def is_available(self):
+        today = now()
+        # Ensure `start_dt` is before `today` and `end_dt` is after `today`
+        is_available = (
+            self.status == "pending" and 
+            self.start_dt <= today <= self.end_dt
+        )
+        return is_available
+        
     def clean(self):
         if self.end_dt <= self.start_dt:
             raise ValidationError("End date must be after start date.")
