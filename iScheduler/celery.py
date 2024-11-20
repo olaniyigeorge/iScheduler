@@ -3,48 +3,61 @@ import os
 from celery import Celery
 import redis
 from celery.schedules import crontab
-# from dotenv import load_dotenv # type: ignore
-
-# load_dotenv()
+from kombu import Queue, Exchange
 
 # Set the default Django settings module for the 'celery' program.
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'iScheduler.settings')
 
 app = Celery('iScheduler')
-
-
-# Ping redis
-# r = redis.Redis(host='localhost', port=6379, db=0)
-# print(r.ping())
-
-
-# Directly set broker URL for testing
-app.conf.broker_url = 'redis://localhost:6379/0'
-
-
-# Using a string here means the worker doesn't have to serialize
-# the configuration object to child processes.
-# - namespace='CELERY' means all celery-related configuration keys
-#   should have a `CELERY_` prefix.
 app.config_from_object('django.conf:settings', namespace='CELERY')
 
-
-# app.conf.update(
-#     CELERY_BROKER_URL='redis://redis:6379/0',  # Or use the Redis container's name if in Docker
-#     CELERY_RESULT_BACKEND='redis://redis:6379/0',  # Same for result backend if you're using one
-# )
-
-
-# Load task modules from all registered Dj  ango apps.
+# Load task modules from all registered Django apps.
 app.autodiscover_tasks()
+
+nodes = [
+    "node-1",
+    "node-2",
+]
+
+CELERY_TASK_QUEUES = []
+CELERY_BEAT_SCHEDULE = {}
+for node in nodes:
+    CELERY_TASK_QUEUES.append(
+        Queue(node, Exchange(node), routing_key=node),
+    )
+
 
 
 CELERY_BEAT_SCHEDULE = {
-    'test-waiting': {
-        'task': 'core.tasks.waiting',
-        'schedule': 2,  # Every two seconds
+    # Tasks for node-1
+    "check-temp-node-1": {
+        "task": "core.tasks.waiting",
+        "schedule": 2.0,  # every 2 seconds
+        "options": {"queue": "node-1"},
+    },
+    "create-schedule-every-month": {
+        "task": "your_app.tasks.create_schedule_for_month",
+        "schedule": crontab(minute=0, hour=0, day_of_month=1),  # Midnight, 1st of the month
+        "options": {"queue": "node-1"},
+    },
+    # Tasks for node-2
+    "create-schedule-every-day": {
+        "task": "your_app.tasks.create_schedule_for_today",
+        "schedule": crontab(minute=0, hour=0),  # Midnight, every day
+        "options": {"queue": "node-2"},
+    },
+    "create-schedule-every-week": {
+        "task": "your_app.tasks.create_schedule_for_week",
+        "schedule": crontab(minute=0, hour=0, day_of_week=0),  # Midnight, Sunday
+        "options": {"queue": "node-2"},
     },
 }
+
+
+app.conf.task_queues = CELERY_TASK_QUEUES
+# celery -A cfehome worker -Q node-2 -l info
+# celery -A cfehome beat -l info
+app.conf.beat_schedule = CELERY_BEAT_SCHEDULE
 
 
 @app.task(bind=True, ignore_result=True)

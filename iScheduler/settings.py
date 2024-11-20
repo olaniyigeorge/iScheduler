@@ -44,7 +44,8 @@ INSTALLED_APPS = [
 
     "core",
 
-    "rest_framework"
+    "rest_framework",
+    "django_celery_beat",
 ]
 
 MIDDLEWARE = [
@@ -124,6 +125,8 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / "static"
+
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
@@ -139,8 +142,8 @@ AUTH_USER_MODEL = "core.User"
 
 # --- Celery Config ---
 # Celery Configuration Options
-CELERY_BROKER_URL = os.environ.get("CELERY_BROKER", "redis://redis-db:6379/0")
-CELERY_RESULT_BACKEND = os.environ.get("CELERY_BROKER", "redis://redis-db:6379/0")
+CELERY_BROKER_URL = os.environ.get("CELERY_BROKER", "redis://localhost:6379/0")
+CELERY_RESULT_BACKEND = os.environ.get("CELERY_BROKER", "redis://localhost:6379/0")
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
