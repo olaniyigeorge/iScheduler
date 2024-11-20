@@ -55,6 +55,11 @@ class Task(models.Model):
 
     class Meta:
         ordering = ["priority", "start_dt"]
+        indexes = [
+            models.Index(fields=["user", "status"]),
+            models.Index(fields=["start_dt", "end_dt"]),
+        ]
+
 
 # Schedule
 class Schedule(models.Model):
@@ -107,3 +112,4 @@ class Schedule(models.Model):
     class Meta:
         unique_together = ("user", "date")
         ordering = ["date"]
+
