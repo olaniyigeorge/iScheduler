@@ -2,6 +2,7 @@ from __future__ import absolute_import, unicode_literals
 import os
 from celery import Celery
 import redis
+from celery.schedules import crontab
 # from dotenv import load_dotenv # type: ignore
 
 # load_dotenv()
@@ -36,6 +37,14 @@ app.config_from_object('django.conf:settings', namespace='CELERY')
 
 # Load task modules from all registered Dj  ango apps.
 app.autodiscover_tasks()
+
+
+CELERY_BEAT_SCHEDULE = {
+    'test-waiting': {
+        'task': 'core.tasks.waiting',
+        'schedule': 2,  # Every two seconds
+    },
+}
 
 
 @app.task(bind=True, ignore_result=True)

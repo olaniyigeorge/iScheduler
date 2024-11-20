@@ -23,7 +23,7 @@ class Index(APIView):
             "name": "iScheduler",
             "dash": f"{request.build_absolute_uri(reverse("tasks",args=[1,]))}",
             "task": reverse("tasks", args=(1,)),
-            "schedule": reverse('schedule'),
+            "schedule": reverse('schedule', args=(1,)),
             "with": reverse("with"),
             "without": reverse('without'),
         })
@@ -73,7 +73,7 @@ class MySchedule(generics.ListCreateAPIView):
     lookup_field = "user"
 
     def get_queryset(self):
-        coverage = "today" # 2024-11-19
+        coverage = "today" # 2024-11-19 or 2024-11
 
         # calculate today's schedule -- 
         # select all tasks where today is within start_dt and end-dt

@@ -14,6 +14,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 import os
 from pathlib import Path
 from celery.schedules import crontab
+from decouple import config
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -23,12 +24,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-zw9-c_mdu=@_hqo%zs2d4r#218%$pdl*k!e_+aik)%dnghchm5'
+SECRET_KEY = config("DJANGO_SECRET_KEY", cast=str)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = True  # config("DEBUG", cast=str)
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
 
 # Application definition
@@ -138,8 +139,8 @@ AUTH_USER_MODEL = "core.User"
 
 # --- Celery Config ---
 # Celery Configuration Options
-CELERY_BROKER_URL = os.environ.get("CELERY_BROKER", "redis://redis:6379/0")
-CELERY_RESULT_BACKEND = os.environ.get("CELERY_BROKER", "redis://redis:6379/0")
+CELERY_BROKER_URL = os.environ.get("CELERY_BROKER", "redis://redis-db:6379/0")
+CELERY_RESULT_BACKEND = os.environ.get("CELERY_BROKER", "redis://redis-db:6379/0")
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
@@ -150,11 +151,6 @@ CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 # Optional: To suppress the deprecation warning
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 
-# CELERY_BEAT_SCHEDULE = {
-#     'send-promotional-emails-every-monday-830am': {
-#         'task': 'notes.tasks.send_promotional_emails',
-#         'schedule': crontab(hour=8, minute=30, day_of_week=1),  # Monday is 1
-#     },
-# }
+
 
 
