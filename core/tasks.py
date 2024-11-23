@@ -1,6 +1,8 @@
-from datetime import timedelta
 import time
+from datetime import timedelta
 from celery import shared_task
+from django.utils.timezone import now
+from .models import User, Task, Schedule
 
 
 @shared_task
@@ -35,40 +37,33 @@ def add(x, y):
 
 
 
-from celery import shared_task
-from django.utils.timezone import now
-from .models import User, Schedule, Task
-
-from celery import shared_task
-from django.utils.timezone import now
-from .models import User, Task, Schedule
 
 @shared_task
-def generate_daily_schedule(user_id):
-    user = User.objects.get(id=user_id)
-    
-    # Create a new schedule for the user (defaulting to 1 day)
-    start_date = now().date()
-    schedule = Schedule.objects.create(
-        user=user,
-        start_date=start_date,
-        duration=1,  # 1 Day
-        time_frame="day"
-    )
-    
-    # Get all tasks for the user that are not completed or cancelled
-    tasks = Task.objects.filter(user=user, status__in=["pending", "done", "cancelled"])
-    
-    # Sort tasks by priority and allocate them to the schedule
-    total_duration = 0
-    for task in tasks:
-        if total_duration + task.estimated_duration_minutes <= schedule.duration * 24 * 60:
-            schedule.tasks.add(task)
-            total_duration += task.estimated_duration_minutes
-    
-    schedule.save()
+def generate_todays_schedule():
+    users = User.objects.all()
+    for user in users:        
+        # Create a new schedule for the user (defaulting to 1 day)
+        start_date = now().date()
+        schedule, created = Schedule.objects.get_or_create(
+            user=user,
+            start_date=start_date,
+            duration=1,  # 1 Day
+        )
+        
+        # Get all tasks for the user that are not completed or cancelled
+        tasks = Task.objects.filter(user=user, status="pending")
+        # print("Available tasks: ", tasks)
+        
+        # Sort tasks by priority and allocate them to the schedule
+        total_duration = timedelta(days=0)
+        for task in tasks:
+            if total_duration + task.apprx_duration <= timedelta(minutes=schedule.duration * 24 * 60):
+                schedule.tasks.add(task)
+                total_duration += task.apprx_duration
+        
+        schedule.save()
 
-    return f"Schedule for {user.username} created successfully for {start_date}."
+    return f"\n\nSchedule for {user.username} created successfully for {start_date}."
 
 @shared_task
 def create_schedule_for_today():
@@ -120,55 +115,53 @@ def create_schedule_for_month():
                 # Skip invalid dates (like February 30th)
                 continue
 
+@shared_task
+def generate_schedule(user_id, time_frame="day", duration=1):
+    from django.utils.timezone import now
+    from datetime import timedelta
+    from .models import User, Task, Schedule
 
+    user = User.objects.get(id=user_id)
+    start_date = now().date()
 
-# @shared_task
-# def generate_schedule(user_id, time_frame="day", duration=1):
-#     from django.utils.timezone import now
-#     from datetime import timedelta
-#     from .models import User, Task, Schedule
+    # Get or create a schedule for the specified duration and time frame
+    schedule, created = Schedule.objects.get_or_create(
+        user=user,
+        start_date=start_date,
+        duration=duration,
+        time_frame=time_frame
+    )
 
-#     user = User.objects.get(id=user_id)
-#     start_date = now().date()
+    # Fetch pending tasks not already in the schedule
+    tasks = Task.objects.filter(user=user, status="pending").exclude(schedules=schedule).order_by("priority")
 
-#     # Get or create a schedule for the specified duration and time frame
-#     schedule, created = Schedule.objects.get_or_create(
-#         user=user,
-#         start_date=start_date,
-#         duration=duration,
-#         time_frame=time_frame
-#     )
+    # Total minutes available in the schedule
+    total_minutes = schedule.duration * 24 * 60
+    used_minutes = 0
 
-#     # Fetch pending tasks not already in the schedule
-#     tasks = Task.objects.filter(user=user, status="pending").exclude(schedules=schedule).order_by("priority")
+    # Reset task start_dt and end_dt intelligently
+    current_start_dt = schedule.start_date
 
-#     # Total minutes available in the schedule
-#     total_minutes = schedule.duration * 24 * 60
-#     used_minutes = 0
+    for task in tasks:
+        if used_minutes + task.apprx_duration <= total_minutes:
+            # Assign new start and end times to the task
+            task_start_dt = current_start_dt
+            task_end_dt = task_start_dt + timedelta(minutes=task.apprx_duration)
 
-#     # Reset task start_dt and end_dt intelligently
-#     current_start_dt = schedule.start_date
+            # Ensure the new end time does not exceed the schedule's end date
+            if task_end_dt.date() > schedule.end_date:
+                break
 
-#     for task in tasks:
-#         if used_minutes + task.estimated_duration_minutes <= total_minutes:
-#             # Assign new start and end times to the task
-#             task_start_dt = current_start_dt
-#             task_end_dt = task_start_dt + timedelta(minutes=task.estimated_duration_minutes)
+            task.start_dt = task_start_dt
+            task.end_dt = task_end_dt
+            task.save()
 
-#             # Ensure the new end time does not exceed the schedule's end date
-#             if task_end_dt.date() > schedule.end_date:
-#                 break
+            # Add the task to the schedule
+            schedule.tasks.add(task)
 
-#             task.start_dt = task_start_dt
-#             task.end_dt = task_end_dt
-#             task.save()
+            # Update the current start time and used minutes
+            current_start_dt = task_end_dt
+            used_minutes += task.apprx_duration
 
-#             # Add the task to the schedule
-#             schedule.tasks.add(task)
-
-#             # Update the current start time and used minutes
-#             current_start_dt = task_end_dt
-#             used_minutes += task.estimated_duration_minutes
-
-#     schedule.save()
-#     return f"Schedule for {user.username} ({time_frame}) {'created' if created else 'updated'} successfully."
+    schedule.save()
+    return f"Schedule for {user.username} ({time_frame}) {'created' if created else 'updated'} successfully."

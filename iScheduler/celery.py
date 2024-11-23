@@ -30,27 +30,32 @@ for node in nodes:
 
 CELERY_BEAT_SCHEDULE = {
     # Tasks for node-1
-    "check-temp-node-1": {
-        "task": "core.tasks.waiting",
-        "schedule": 2.0,  # every 2 seconds
+    "make-todays-schedule": {
+        "task": "core.tasks.generate_todays_schedule",
+        "schedule": 30.0,  # crontab(minute=0, hour=0,)   --- Midnight, 1st of the month
         "options": {"queue": "node-1"},
-    },
-    "create-schedule-every-month": {
-        "task": "your_app.tasks.create_schedule_for_month",
-        "schedule": crontab(minute=0, hour=0, day_of_month=1),  # Midnight, 1st of the month
-        "options": {"queue": "node-1"},
-    },
-    # Tasks for node-2
-    "create-schedule-every-day": {
-        "task": "your_app.tasks.create_schedule_for_today",
-        "schedule": crontab(minute=0, hour=0),  # Midnight, every day
-        "options": {"queue": "node-2"},
     },
     "create-schedule-every-week": {
-        "task": "your_app.tasks.create_schedule_for_week",
+        "task": "core.tasks.create_schedule_for_week",
         "schedule": crontab(minute=0, hour=0, day_of_week=0),  # Midnight, Sunday
-        "options": {"queue": "node-2"},
+        "options": {"queue": "node-1"},
     },
+    # "create-schedule-every-month": {
+    #     "task": "your_app.tasks.create_schedule_for_month",
+    #     "schedule": crontab(minute=0, hour=0, day_of_month=1),  # Midnight, 1st of the month
+    #     "options": {"queue": "node-1"},
+    # },
+    # # Tasks for node-2
+    # "create-schedule-every-day": {
+    #     "task": "your_app.tasks.create_schedule_for_today",
+    #     "schedule": crontab(minute=0, hour=0),  # Midnight, every day
+    #     "options": {"queue": "node-2"},
+    # },
+    # "create-schedule-every-week": {
+    #     "task": "your_app.tasks.create_schedule_for_week",
+    #     "schedule": crontab(minute=0, hour=0, day_of_week=0),  # Midnight, Sunday
+    #     "options": {"queue": "node-2"},
+    # },
 }
 
 
@@ -63,3 +68,4 @@ app.conf.beat_schedule = CELERY_BEAT_SCHEDULE
 @app.task(bind=True, ignore_result=True)
 def debug_task(self):
     print(f'Request: {self.request!r}')
+    

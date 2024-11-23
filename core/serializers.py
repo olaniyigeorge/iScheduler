@@ -16,7 +16,7 @@ class TaskSerializer(serializers.ModelSerializer):
             "priority",
             "status",
             "start_dt",
-            "end_dt",
+            "expires",
             "user",
             "is_available"   
         ]
