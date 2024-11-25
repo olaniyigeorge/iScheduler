@@ -14,4 +14,7 @@ urlpatterns = [
     # --- Celery Test ---
     path("with", with_celery, name="with"),
     path("without", without_celery, name="without"),
+
+    # --- Query Test ---
+    path("test", TestQuery.as_view(), name="test"),
 ]

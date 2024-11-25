@@ -38,6 +38,12 @@ def without_celery(request):
     return JsonResponse({"Without": "Without celery"})
 
 
+class TestQuery(APIView):
+    def get(self, request):
+        u = User.objects.prefetch_related('tasks').filter(tasks__status="pending").distinct()
+        for i in u:
+            print("-- ", i, i.tasks)
+        return Response({"Test": "Testing"})
 
 
 # --- User ---
