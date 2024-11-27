@@ -47,6 +47,10 @@ class Task(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    # Notification flags
+    notified = models.BooleanField(default=False) 
+    push_notified = models.BooleanField(default=False)  
+
     def __str__(self):
         return f"{self.name} ({self.status})"
     
@@ -57,7 +61,8 @@ class Task(models.Model):
 
     def clean(self):
         if self.expires and self.expires <= self.start_dt:
-            raise ValidationError("Expiry date must be after start date.")
+            self.expires = self.start_dt + self.apprx_duration
+            # raise ValidationError("Expiry date must be after start date.")
         super().clean()
 
     def is_available(self):
@@ -70,7 +75,7 @@ class Task(models.Model):
         return is_available
          
     class Meta:
-        ordering = ["priority", "start_dt"]
+        ordering = ["start_dt", "priority", "apprx_duration"]
         indexes = [
             models.Index(fields=["user", "status"]),
             models.Index(fields=["start_dt", "expires"]),
@@ -99,6 +104,7 @@ class Schedule(models.Model):
         tasks_duration = sum(task.apprx_duration.total_seconds() / 60 for task in self.tasks.all())
         if tasks_duration > total_minutes:
             raise ValidationError("Total task duration exceeds the available schedule duration.")
+        return True
 
     def __str__(self):
         return f"{self.user.username.title()}'s Schedule ({self.start_date} to {self.end_date})"

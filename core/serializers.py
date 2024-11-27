@@ -15,6 +15,7 @@ class TaskSerializer(serializers.ModelSerializer):
             "description",
             "priority",
             "status",
+            "apprx_duration",
             "start_dt",
             "expires",
             "user",

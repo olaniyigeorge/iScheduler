@@ -13,7 +13,7 @@ admin.site.register(User, CustomUserAdmin)
 
 @admin.register(Task)
 class TaskAdmin(admin.ModelAdmin):
-    list_display = ("name", "user", "apprx_duration", "status", "start_dt",  "expires")
+    list_display = ("id", "name", "user", "apprx_duration", "status", "start_dt",  "expires")
     list_filter = ("priority", "status")
     search_fields = ("name", "description")
 

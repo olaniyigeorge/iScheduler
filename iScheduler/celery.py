@@ -32,12 +32,22 @@ CELERY_BEAT_SCHEDULE = {
     # Tasks for node-1
     "make-todays-schedule": {
         "task": "core.tasks.generate_todays_schedule",
-        "schedule": 30.0,  # crontab(minute=0, hour=0,)   --- Midnight, 1st of the month
+        "schedule": crontab(minute=0, hour=0,),  #   --- Midnight, 1st of the month
         "options": {"queue": "node-1"},
     },
     "create-schedule-every-week": {
         "task": "core.tasks.create_schedule_for_week",
         "schedule": crontab(minute=0, hour=0, day_of_week=0),  # Midnight, Sunday
+        "options": {"queue": "node-1"},
+    },
+    "email-task-notifications": {
+        "task": "core.tasks.notify_upcoming_tasks",
+        "schedule": 10.0, #crontab(minute=45),  # Run on the 45th minute of every hour
+        "options": {"queue": "node-1"},
+    },
+    "push-task-notifications": {
+        "task": "core.tasks.notify_imminent_tasks",
+        "schedule": 600.0,  # Send relevant push notifications for tasks on schedules every 10 minutes
         "options": {"queue": "node-1"},
     },
     # "create-schedule-every-month": {

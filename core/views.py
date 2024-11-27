@@ -7,9 +7,9 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from core.models import Schedule, Task, User
 from core.serializers import ScheduleSerializer, TaskSerializer
-from core.tasks import generate_todays_schedule, waiting
+from core.tasks import generate_daily_schedules
 from django.utils.timezone import now
-
+import timeit
 
 class Index(APIView):
 
@@ -21,20 +21,19 @@ class Index(APIView):
             dash = None
         return Response({
             "name": "iScheduler",
-            "dash": f"{request.build_absolute_uri(reverse("tasks",args=[1,]))}",
-            "task": reverse("tasks", args=(1,)),
-            "schedule": reverse('schedule', args=(1,)),
+            "current_schedule": f"{request.build_absolute_uri(reverse("current_schedule",args=[1,]))}",
+            "tasks": f"{request.build_absolute_uri(reverse("tasks",args=[1,]))}",
+            "schedules": f"{request.build_absolute_uri(reverse("schedules",args=[1,]))}",
             "with": f"{request.build_absolute_uri(reverse("with"))}",
             "without": f"{request.build_absolute_uri(reverse("without"))}",
         })
 
 def with_celery(request):
-    w = waiting.apply_async(queue='node-1')
-    print(w)
+    gen = generate_daily_schedules.apply_async(queue='node-1')
     return JsonResponse({"With": "With celery"})
 
 def without_celery(request):
-    w= waiting(5)
+    gen = generate_daily_schedules()
     return JsonResponse({"Without": "Without celery"})
 
 
@@ -85,11 +84,17 @@ class MySchedules(generics.ListCreateAPIView):
     lookup_field = "user"
 
     def get_queryset(self):
-        coverage = "today" # 2024-11-19 or 2024-11
-
-        # calculate today's schedule -- 
-        # select all tasks where today is within start_dt and end-dt
-        user_id = self.kwargs.get("user")  # Fetch user ID from the URL
-        queryset = Schedule.objects.filter(user_id=user_id, start_date=now())
-
+        user_id = self.kwargs.get("user")
+        queryset = Schedule.objects.filter(user_id=user_id)
         return queryset
+    
+class CurrentSchedule(generics.RetrieveAPIView):
+    serializer_class = ScheduleSerializer
+    lookup_field = "user"
+
+
+    def get_queryset(self):
+        user_id = self.kwargs.get("user") 
+        queryset = Schedule.objects.filter(user_id=user_id, start_date=now())
+        return queryset
+    

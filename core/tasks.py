@@ -3,37 +3,156 @@ from datetime import timedelta
 from celery import shared_task
 from django.utils.timezone import now
 from .models import User, Task, Schedule
+from django.db.models import Prefetch
 
+
+# Create schedule and po[ulate with pending tasks
+@shared_task
+def generate_daily_schedules():
+    today = now().date()
+    total_minutes = 24 * 60  # 1 day in minutes
+
+    # Prefetch tasks for all users in a single query
+    users_with_tasks = User.objects.prefetch_related(
+        Prefetch(
+            'tasks', 
+            queryset=Task.objects.filter(status="pending").order_by("priority"),
+            to_attr='pending_tasks'
+        )
+    )    
+    schedules_to_create = []
+    schedules_to_update = []
+
+    # Iterate through users and their prefetched tasks
+    for user in users_with_tasks:
+        # Get or create schedule
+        schedule, created = Schedule.objects.get_or_create(
+            user=user, 
+            start_date=today, 
+            defaults={'duration': 1}
+        )
+
+        used_minutes = 0
+        tasks_to_add = []
+
+        for task in getattr(user, 'pending_tasks', []):
+            task_minutes = task.apprx_duration.total_seconds() / 60
+            if used_minutes + task_minutes <= total_minutes:
+                tasks_to_add.append(task)
+                used_minutes += task_minutes
+            else:
+                break
+
+        if tasks_to_add:
+            schedule.tasks.add(*tasks_to_add)
+
+        # Optionally, collect schedules for bulk update (if needed)
+        schedules_to_update.append(schedule)
+
+    # Save schedules in bulk if necessary
+    Schedule.objects.bulk_update(schedules_to_update, ['duration'])
+
+    return "Daily schedules generated successfully."
 
 @shared_task
-def waiting(num: int = 5):
-    time.sleep(num)
-    return f"Waited for {num} secs"
+def create_schedule_for_week():
+    today = now().date()
+    total_minutes = 7 * 24 * 60  # 7 day in minutes
 
+    # Prefetch tasks for all users in a single query
+    users_with_tasks = User.objects.prefetch_related(
+        Prefetch(
+            'tasks', 
+            queryset=Task.objects.filter(status="pending").order_by("priority"),
+            to_attr='pending_tasks'
+        )
+    )    
+    schedules_to_create = []
+    schedules_to_update = []
 
+    # Iterate through users and their prefetched tasks
+    for user in users_with_tasks:
+        # Get or create schedule
+        schedule, created = Schedule.objects.get_or_create(
+            user=user, 
+            start_date=today, 
+            defaults={'duration': 7}
+        )
 
+        used_minutes = 0
+        tasks_to_add = []
+
+        for task in getattr(user, 'pending_tasks', []):
+            task_minutes = task.apprx_duration.total_seconds() / 60
+            if used_minutes + task_minutes <= total_minutes:
+                tasks_to_add.append(task)
+                used_minutes += task_minutes
+            else:
+                break
+
+        if tasks_to_add:
+            schedule.tasks.add(*tasks_to_add)
+
+        # Optionally, collect schedules for bulk update (if needed)
+        schedules_to_update.append(schedule)
+
+    # Save schedules in bulk if necessary
+    Schedule.objects.bulk_update(schedules_to_update, ['duration'])
+
+    return "Daily schedules generated successfully."
+
+# Notify users about upcoming tasks via multiple channels: email and push notifications.
 @shared_task
-def add(x, y):
-    return x + y
+def notify_upcoming_tasks():
+    tasks = Task.objects.filter(
+        status="pending", 
+        start_dt__range=[now(), now() + timedelta(hours=1)],
+        notified=False  # Only select tasks that haven’t been notified
+    )
+    for task in tasks:
+        user = task.user
+        # Send email
+        print(f"Notified {user.username} about task: {task.name}")
+        task.notified = True  # Mark as notified
+        task.save(update_fields=["notified"])  # Save only the notified field to reduce overhead
+
+    return f"Notified users about {tasks.count()} upcoming tasks."
+
+def notify_imminent_tasks():
+    tasks = Task.objects.filter(
+        status="pending", 
+        start_dt__range=[now(), now() + timedelta(minutes=15)],
+        push_notified=False  # Only select tasks not yet push-notified
+    )
+    for task in tasks:
+        user = task.user
+        # Send push notification
+        print(f"Push notified {user.username} about task: {task.name}")
+        task.push_notified = True  # Mark as push-notified
+        task.save(update_fields=["push_notified"])
+
+    return f"Push notified users about {tasks.count()} imminent tasks."
+
+# Integrate with External Systems: Sync with Google Calendar, 
+##  Microsoft Outlook, or CRM systems
+@shared_task
+def sync_with_google_calendar(user_id):
+    user = User.objects.get(id=user_id)
+    # Fetch Google Calendar events and map them to Task instances
+    print(f"Synced tasks for {user.username} with Google Calendar.")
 
 
-## **Proposed Tasks**
-
-# Automatically adjust tasks based on priority, 
-#       time constraints, 
-#       and availability.
-
-# Notify users about upcoming tasks via multiple channels 
-#       email and push notifications.
-
-# Integrate with External Systems:
-#       Sync with Google Calendar, 
-#       Microsoft Outlook, or 
-#       CRM systems.
-
-# Analyze user activity to recommend better scheduling 
-#       habits or optimize resource allocation 
-#       for businesses.
+# Analyze user activity and schedule to recommend better scheduling 
+#    - remove tasks pending and cancelled tasks from schedule
+#    - Notify user of changes made
+@shared_task
+def analyze_user_habits():
+    users = User.objects.all()
+    for user in users:
+        cancelled_tasks = Task.objects.filter(user=user, status="cancelled").count()
+        missed_tasks = Task.objects.filter(user=user, status="missed").count()
+        print(f"User: {user.username}, Cancelled: {cancelled_tasks}, Missed: {missed_tasks}")
+    return "User habits analyzed."
 
 
 
@@ -65,6 +184,11 @@ def generate_todays_schedule():
 
     return f"\n\nSchedule for {user.username} created successfully for {start_date}."
 
+
+
+
+# ----- MISC -----
+
 @shared_task
 def create_schedule_for_today():
     today = now().date()
@@ -74,28 +198,12 @@ def create_schedule_for_today():
     
     for user in users:
         # Check if a schedule for today already exists for the user
-        schedule, created = Schedule.objects.get_or_create(user=user, date=today)
+        schedule, created = Schedule.objects.get_or_create(user=user, start_date=today)
         
         if created:
             print(f"Schedule created for {user.username} on {today}")
         else:
             print(f"Schedule already exists for {user.username} on {today}")
-
-@shared_task
-def create_schedule_for_week():
-    # Create schedules for a whole week (from today to 6 days after)
-    today = now().date()
-    users = User.objects.all()
-    
-    for user in users:
-        for i in range(7):  # 7 days from today
-            date = today + timedelta(days=i)
-            schedule, created = Schedule.objects.get_or_create(user=user, date=date)
-            
-            if created:
-                print(f"Schedule created for {user.username} on {date}")
-            else:
-                print(f"Schedule already exists for {user.username} on {date}")
 
 @shared_task
 def create_schedule_for_month():
@@ -108,7 +216,7 @@ def create_schedule_for_month():
         for day in range(1, 32):  # Maximum days in a month
             try:
                 date = today.replace(day=day)
-                schedule, created = Schedule.objects.get_or_create(user=user, date=date)
+                schedule, created = Schedule.objects.get_or_create(user=user, start_date=date)
                 if created:
                     print(f"Schedule created for {user.username} on {date}")
             except ValueError:
@@ -117,10 +225,6 @@ def create_schedule_for_month():
 
 @shared_task
 def generate_schedule(user_id, time_frame="day", duration=1):
-    from django.utils.timezone import now
-    from datetime import timedelta
-    from .models import User, Task, Schedule
-
     user = User.objects.get(id=user_id)
     start_date = now().date()
 
