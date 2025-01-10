@@ -28,21 +28,8 @@ class Index(APIView):
             "without": f"{request.build_absolute_uri(reverse("without"))}",
         })
 
-def with_celery(request):
-    gen = generate_daily_schedules.apply_async(queue='node-1')
-    return JsonResponse({"With": "With celery"})
-
-def without_celery(request):
-    gen = generate_daily_schedules()
-    return JsonResponse({"Without": "Without celery"})
 
 
-class TestQuery(APIView):
-    def get(self, request):
-        u = User.objects.prefetch_related('tasks').filter(tasks__status="pending").distinct()
-        for i in u:
-            print("-- ", i, i.tasks)
-        return Response({"Test": "Testing"})
 
 
 # --- User ---
@@ -98,3 +85,13 @@ class CurrentSchedule(generics.RetrieveAPIView):
         queryset = Schedule.objects.filter(user_id=user_id, start_date=now())
         return queryset
     
+
+def with_celery(request):
+    gen = generate_daily_schedules.apply_async(queue='node-1')
+    return JsonResponse({"With": "With celery"})
+
+def without_celery(request):
+    gen = generate_daily_schedules()
+    return JsonResponse({"Without": "Without celery"})
+
+

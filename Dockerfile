@@ -1,5 +1,3 @@
-# Set the python version as a build-time argument
-# with Python 3.12 as the default
 ARG PYTHON_VERSION=3.12-slim-bullseye
 FROM python:${PYTHON_VERSION}
 
@@ -41,12 +39,6 @@ RUN pip install -r /tmp/requirements.txt
 
 # copy the project code into the container's working directory
 COPY ./ /code
-
-# database isn't available during build
-# run any other commands that do not need the database
-# such as:
-# RUN python manage.py collectstatic --noinput
-
 # set the Django default project name
 ARG PROJ_NAME="iScheduler"
 

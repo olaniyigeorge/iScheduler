@@ -99,7 +99,7 @@ def create_schedule_for_week():
     # Save schedules in bulk if necessary
     Schedule.objects.bulk_update(schedules_to_update, ['duration'])
 
-    return "Daily schedules generated successfully."
+    return "Weekly schedules generated successfully."
 
 # Notify users about upcoming tasks via multiple channels: email and push notifications.
 @shared_task
@@ -118,6 +118,7 @@ def notify_upcoming_tasks():
 
     return f"Notified users about {tasks.count()} upcoming tasks."
 
+@shared_task
 def notify_imminent_tasks():
     tasks = Task.objects.filter(
         status="pending", 
@@ -142,9 +143,7 @@ def sync_with_google_calendar(user_id):
     print(f"Synced tasks for {user.username} with Google Calendar.")
 
 
-# Analyze user activity and schedule to recommend better scheduling 
-#    - remove tasks pending and cancelled tasks from schedule
-#    - Notify user of changes made
+# Analyze user activity and schedule to recommend better scheduling
 @shared_task
 def analyze_user_habits():
     users = User.objects.all()
