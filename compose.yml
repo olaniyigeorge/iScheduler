@@ -1,77 +1,58 @@
-
 services:
-    redis-db:
-        networks:
-          - iScheduler
-        image: redis:latest
-        ports:
-          - "6555:6379"
-        volumes:
-          - redis_data:/data
-    psql-db:
-        image: postgres
-        env_file:
-            - .env.db
-        volumes:
-            - psql_data:/var/lib/psql/data/
-        restart: unless-stopped
-    django-base: &django-base
-        networks:
-            - iScheduler
-        build: 
-          context: .
-          dockerfile: Dockerfile
-        env_file:
-            - .env
-        volumes:
-          - app_data:/app_data   
-        develop:
-            watch:
-              - action: sync+restart
-                path: ./src
-                target: /code
-              - action: sync+restart
-                path: ./requirements.txt
-                target: /tmp/requirements.txt
-    web:
-        <<: *django-base
-        environment:
-          - NODE_ID=0
-          - PORT=8088
-        ports:
-          - "8088:8088"
-    beat:
-        <<: *django-base
-        environment:
-          - NODE_ID=0
-        command: |
-            celery -A iScheduler beat -l info
-    node_1:
-        <<: *django-base
-        environment:
-          - NODE_ID=1
-        command: |
-            celery -A iScheduler worker -Q node-1 -l info
-    node_2:
-        <<: *django-base
-        environment:
-          - NODE_ID=2
-        command: |
-            celery -A iScheduler worker -Q node-2 -l info
-    # celery:
-    #     build: .
-    #     command: celery -A iScheduler worker --loglevel=info
-    #     volumes:
-    #         - .:/usr/src/app
-    #     environment:
-    #         - DEBUG=1
-    #         - DJANGO_ALLOWED_HOSTS=localhost 127.0.0.1 [::1]
-    #         - CELERY_BROKER=redis://redis:6379/0
-    #         - CELERY_BACKEND=redis://redis:6379/0
-    #     depends_on:
-    #         - django
-    #         - redis
-    
+  redis-db:
+    image: redis:latest
+    ports:
+      - "6555:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - iScheduler
+
+  psql-db:
+    image: postgres:15
+    env_file:
+      - .env.db
+    volumes:
+      - psql_data:/var/lib/postgresql/data/
+    restart: unless-stopped
+
+  django-base: &django-base
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    volumes:
+      - ./src:/app
+      - app_data:/app_data
+    networks:
+      - iScheduler
+
+  web:
+    <<: *django-base
+    environment:
+      - NODE_ID=0
+      - PORT=8088
+    ports:
+      - "8088:8088"
+    command: gunicorn iScheduler.wsgi:application --bind 0.0.0.0:8088
+
+  beat:
+    <<: *django-base
+    command: celery -A iScheduler beat -l info
+
+  node_1:
+    <<: *django-base
+    environment:
+      - NODE_ID=1
+    command: celery -A iScheduler worker -Q node-1 -l info
+
+  node_2:
+    <<: *django-base
+    environment:
+      - NODE_ID=2
+    command: celery -A iScheduler worker -Q node-2 -l info
+
 volumes:
   redis_data:
   psql_data:
